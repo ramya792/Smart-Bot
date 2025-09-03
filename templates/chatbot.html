@@ -1,339 +1,439 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AI Assistant Chat</title>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Assistant Chat</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f4f6f8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+body {
+  font-family: 'Segoe UI', sans-serif;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea, #764ba2, #43cea2, #185a9d);
+  background-size: 400% 400%;
+  animation: gradientMove 15s ease infinite;
+}
 
-    .app-container {
-      display: flex;
-      height: 95%;
-      width: 95%;
-      background: #fff;
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    }
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
 
-    .history-list {
-      width: 300px;
-      background: #e3e9f3;
-      padding: 1rem;
-      overflow-y: auto;
-      border-right: 2px solid #cbd5e1;
-    }
+.app-container {
+  display: flex;
+  height: 95%;
+  width: 95%;
+  border-radius: 20px;
+  overflow: hidden;
+  backdrop-filter: blur(15px);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
 
-    .chat-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 1rem;
-    }
+/* Sidebar */
+.history-list {
+  width: 300px;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 1rem;
+  overflow-y: auto;
+  border-right: 1px solid rgba(255,255,255,0.2);
+  transition: transform 0.4s ease;
+}
+.history-hidden { transform: translateX(-100%); }
 
-    .controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.75rem;
-      gap: 1rem;
-    }
+/* Chat */
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  position: relative;
+}
 
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      margin-bottom: 1rem;
-      padding-right: 8px;
-    }
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  gap: 1rem;
+}
 
-    .message {
-      margin-bottom: 1rem;
-      padding: 0.75rem 1rem;
-      border-radius: 12px;
-      width: fit-content;
-      max-width: 600px;
-      line-height: 1.5;
-      word-wrap: break-word;
-      word-break: break-word;
-    }
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  padding-right: 8px;
+}
 
-    .user { background-color: #cbd5e1; align-self: flex-end; }
-    .bot { background-color: #e0e7ff; align-self: flex-start; }
+.message {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  max-width: 70%;
+  animation: fadeIn 0.5s ease;
+}
 
-    .typing { display: flex; align-items: center; }
-    .spinner {
-      width: 20px; height: 20px;
-      border: 3px solid #93c5fd;
-      border-top: 3px solid transparent;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-left: 5px;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-    .input-area {
-      display: flex;
-      gap: 0.75rem;
-      padding-top: 0.5rem;
-      border-top: 1px solid #e2e8f0;
-      align-items: center;
-    }
+.message .avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background-size: cover;
+  background-position: center;
+}
 
-    input[type="text"] {
-      flex: 1;
-      padding: 12px 16px;
-      border: 1.5px solid #a5b4fc;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 500;
-      color: #334155;
-      transition: border-color 0.3s ease;
-    }
-    input[type="text"]:focus { border-color: #6366f1; outline: none; }
+.bubble {
+  padding: 0.75rem 1rem;
+  border-radius: 15px;
+  line-height: 1.5;
+  word-break: break-word;
+  backdrop-filter: blur(10px);
+}
 
-    button {
-      padding: 10px 16px;
-      border: none;
-      background-color: #6366f1;
-      color: white;
-      border-radius: 10px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    button:hover { background-color: #4f46e5; }
+.user { margin-left: auto; flex-direction: row-reverse; }
+.user .bubble { background: rgba(255, 255, 255, 0.7); color: #1e293b; }
+.user .avatar { margin-left: 8px; margin-right: 0; background-image: url('https://i.ibb.co/0jJ9yB0/user.png'); }
 
-    .mic-btn { background-color: #10b981; }
-    .mic-btn:hover { background-color: #059669; }
+.bot .bubble { background: rgba(99, 102, 241, 0.7); color: white; }
+.bot .avatar { background-image: url('https://i.ibb.co/z2fQ6nJ/robot.png'); }
 
-    .voice-controls button {
-      background-color: #f59e0b;
-      margin-left: 4px;
-    }
-    .voice-controls button:hover { background-color: #d97706; }
-    .stop-btn { background-color: #ef4444 !important; }
-    .stop-btn:hover { background-color: #dc2626 !important; }
-  </style>
+/* Typing dots */
+.typing-dots span {
+  display: inline-block;
+  width: 6px; height: 6px;
+  margin: 0 2px;
+  background: #fff;
+  border-radius: 50%;
+  animation: bounce 1.2s infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* Input */
+.input-area {
+  display: flex;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255,255,255,0.3);
+  align-items: center;
+}
+
+input[type="text"] {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1.5px solid rgba(255,255,255,0.5);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #334155;
+  background: rgba(255,255,255,0.6);
+  transition: border-color 0.3s ease;
+}
+input[type="text"]:focus { border-color: #6366f1; outline: none; }
+
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+button:hover { opacity: 0.85; }
+
+.send-btn { background: #6366f1; color: white; }
+.mic-btn { background: #10b981; color: white; }
+.stop-btn { background: #ef4444; color: white; }
+.pause-btn { background: #f59e0b; color: white; }
+
+.dark-mode body { background: #1e293b; }
+</style>
 </head>
 <body>
-  <div class="app-container">
-    <div class="history-list">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-        <strong>History</strong>
-        <button onclick="clearHistory()">Clear</button>
-      </div>
-      <div id="historyList"></div>
+<div class="app-container">
+  <!-- Sidebar -->
+  <div class="history-list" id="sidebar">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+      <strong>History</strong>
+      <button onclick="clearHistory()">Clear</button>
     </div>
-    <div class="chat-container">
-      <div class="controls">
-        <div>
-          <label for="language">Language: </label>
-          <select id="language" onchange="changeLanguage()">
-            <option value="en-US">English</option>
-            <option value="hi-IN">Hindi</option>
-            <option value="te-IN">Telugu</option>
-            <option value="fr-FR">French</option>
-            <option value="es-ES">Spanish</option>
-            <option value="kn-IN">Kannada</option>
-            <option value="ml-IN">Malayalam</option>
-            <option value="ta-IN">Tamil</option>
-          </select>
-        </div>
-        <button onclick="newChat()">New Chat</button>
-      </div>
-      <div class="messages" id="chatBox"></div>
-      <div class="input-area">
-        <input id="userInput" type="text" placeholder="Ask anything..." />
-        <button class="mic-btn" onclick="startListening()">🎤</button>
-        <button id="sendBtn" onclick="sendMessage()">Send</button>
-        <div class="voice-controls">
-          <button id="pauseBtn">⏸ Pause</button>
-          <button id="stopBtn" class="stop-btn">⏹ Stop</button>
-        </div>
-      </div>
-    </div>
+    <div id="historyList"></div>
   </div>
 
-  <script>
-    const chatBox = document.getElementById('chatBox');
-    const userInput = document.getElementById('userInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const historyList = document.getElementById('historyList');
-    const pauseBtn = document.getElementById("pauseBtn");
-    const stopBtn = document.getElementById("stopBtn");
+  <!-- Chat -->
+  <div class="chat-container">
+    <div class="controls">
+      <div>
+        <label for="language">Language: </label>
+        <select id="language" onchange="changeLanguage()">
+          <option value="en-US">English</option>
+          <option value="hi-IN">Hindi</option>
+          <option value="te-IN">Telugu</option>
+          <option value="fr-FR">French</option>
+          <option value="es-ES">Spanish</option>
+          <option value="kn-IN">Kannada</option>
+          <option value="ml-IN">Malayalam</option>
+          <option value="ta-IN">Tamil</option>
+        </select>
+      </div>
+      <div>
+        <button onclick="toggleSidebar()">☰</button>
+        <button onclick="newChat()">New Chat</button>
+        <button onclick="toggleDarkMode()">🌙</button>
+      </div>
+    </div>
+    <div class="messages" id="chatBox"></div>
+    <div class="input-area">
+      <input id="userInput" type="text" placeholder="Ask anything..." />
+      <button class="mic-btn" onclick="startListening()">🎤</button>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+      <button class="pause-btn" id="pauseBtn">⏸</button>
+      <button class="stop-btn" id="stopBtn">⏹</button>
+    </div>
+  </div>
+</div>
 
-    const history = [];
-    let selectedLang = "en-US"; 
-    let currentUtterance = null;
-    let isPaused = false;
+<script>
+const chatBox = document.getElementById('chatBox');
+const userInput = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+const historyList = document.getElementById('historyList');
+const pauseBtn = document.getElementById("pauseBtn");
+const stopBtn = document.getElementById("stopBtn");
+const sidebar = document.getElementById("sidebar");
 
-    function scrollToBottom() {
-      chatBox.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
-    }
+const history = [];
+let selectedLang = "en-US"; 
+let currentUtterance = null;
+let isPaused = false;
 
-    function appendMessage(text, role) {
-      const msg = document.createElement('div');
-      msg.className = `message ${role}`;
-      const timestamp = new Date().toLocaleTimeString();
-      msg.innerHTML = `
-        <div>
-          <div><strong>${timestamp}</strong></div>
-          <div>${role === 'bot' ? marked.parse(text) : text}</div>
-        </div>`;
-      chatBox.appendChild(msg);
-      scrollToBottom();
+function mapLangCode(lang) {
+  const map = {
+    "en-US": "en",
+    "hi-IN": "hi",
+    "te-IN": "te",
+    "fr-FR": "fr",
+    "es-ES": "es",
+    "kn-IN": "kn",
+    "ml-IN": "ml",
+    "ta-IN": "ta"
+  };
+  return map[lang] || "en";
+}
 
-      if (role === "bot") speakText(text, selectedLang);
-    }
-
-    function appendTypingIndicator() {
-      const typing = document.createElement('div');
-      typing.id = 'typing';
-      typing.className = 'message bot typing';
-      typing.innerHTML = `<div class="spinner"></div>`;
-      chatBox.appendChild(typing);
-      scrollToBottom();
-    }
-
-    function removeTypingIndicator() {
-      const typing = document.getElementById('typing');
-      if (typing) typing.remove();
-    }
-
-    async function sendMessage() {
-      const text = userInput.value.trim();
-      if (!text) return;
-      appendMessage(text, 'user');
-      history.push(['user', text]);
-      userInput.value = '';
-      sendBtn.disabled = true;
-      appendTypingIndicator();
-
-      try {
-        const res = await fetch('/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, history, language: selectedLang })
-        });
-        const data = await res.json();
-        removeTypingIndicator();
-        appendMessage(data.response, 'bot');
-        history.push(['bot', data.response]);
-      } catch {
-        removeTypingIndicator();
-        appendMessage("Oops, something went wrong.", 'bot');
-      }
-
-      updateHistoryList();
-      sendBtn.disabled = false;
-    }
-
-    function newChat() {
-      history.length = 0;
-      chatBox.innerHTML = '';
-      historyList.innerHTML = '';
-      localStorage.removeItem('chatHistory');
-    }
-
-    function updateHistoryList() {
-      historyList.innerHTML = '';
-      for (let i = 0; i < history.length; i += 2) {
-        const userMsg = history[i]?.[1] || '';
-        const botMsg = history[i + 1]?.[1] || '';
-        const item = document.createElement('div');
-        item.className = 'history-entry';
-        item.innerHTML = `
-          <div><strong>You:</strong> ${userMsg.slice(0, 40)}</div>
-          <div><strong>Bot:</strong> ${botMsg.slice(0, 40)}</div>`;
-        historyList.appendChild(item);
-      }
-    }
-
-    function clearHistory() {
-      history.length = 0;
-      chatBox.innerHTML = '';
-      historyList.innerHTML = '';
-      localStorage.removeItem('chatHistory');
-    }
-
-    function changeLanguage() {
-      const dropdown = document.getElementById("language");
-      selectedLang = dropdown.value;
-    }
-
-    // 🎤 Speech-to-Text
-    function startListening() {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-      recognition.lang = selectedLang || "en-US";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      recognition.start();
-
-      recognition.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        userInput.value = text;
-        sendMessage();
-      };
-
-      recognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-      };
-    }
-
-    // 🔊 Text-to-Speech
-    function speakText(text, lang="en-US") {
-      if (speechSynthesis.speaking) speechSynthesis.cancel();
-      currentUtterance = new SpeechSynthesisUtterance(text);
-      currentUtterance.lang = lang;
-      speechSynthesis.speak(currentUtterance);
-    }
-
-    // Pause / Resume
-    pauseBtn.addEventListener("click", () => {
-      if (!isPaused) {
-        speechSynthesis.pause();
-        pauseBtn.textContent = "▶ Resume";
-        isPaused = true;
-      } else {
-        speechSynthesis.resume();
-        pauseBtn.textContent = "⏸ Pause";
-        isPaused = false;
-      }
+async function translateText(text, targetLang) {
+  try {
+    const res = await fetch("https://libretranslate.de/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ q: text, source: "auto", target: targetLang })
     });
+    const data = await res.json();
+    return data.translatedText || text;
+  } catch (e) {
+    console.error("Translation error:", e);
+    return text;
+  }
+}
 
-    // Stop
-    stopBtn.addEventListener("click", () => {
-      speechSynthesis.cancel();
-      pauseBtn.textContent = "⏸ Pause"; 
-      isPaused = false;
+function scrollToBottom() {
+  chatBox.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+}
+
+function appendMessage(text, role) {
+  const msg = document.createElement('div');
+  msg.className = `message ${role}`;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = role === 'bot' ? marked.parse(text) : text;
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  msg.appendChild(avatar);
+  msg.appendChild(bubble);
+  chatBox.appendChild(msg);
+  scrollToBottom();
+  if (role === "bot") speakText(text, selectedLang);
+}
+
+function appendTypingIndicator() {
+  const typing = document.createElement('div');
+  typing.id = 'typing';
+  typing.className = 'message bot';
+  typing.innerHTML = `
+    <div class="avatar"></div>
+    <div class="bubble typing-dots">
+      <span></span><span></span><span></span>
+    </div>`;
+  chatBox.appendChild(typing);
+  scrollToBottom();
+}
+
+function removeTypingIndicator() {
+  const typing = document.getElementById('typing');
+  if (typing) typing.remove();
+}
+
+async function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text) return;
+
+  appendMessage(text, 'user');
+  history.push(['user', text]);
+  userInput.value = '';
+  sendBtn.disabled = true;
+  appendTypingIndicator();
+
+  try {
+    const translatedUser = await translateText(text, "en");
+
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: translatedUser, history, language: "en" })
     });
+    const data = await res.json();
 
-    // Restore chat
-    window.onload = () => {
-      const saved = JSON.parse(localStorage.getItem('chatHistory') || '[]');
-      saved.forEach(([role, text]) => appendMessage(text, role));
-      history.push(...saved);
-      updateHistoryList();
-    };
+    const targetLang = mapLangCode(selectedLang);
+    const translatedBot = await translateText(data.response, targetLang);
 
-    window.onbeforeunload = () => {
-      localStorage.setItem('chatHistory', JSON.stringify(history));
-    };
+    removeTypingIndicator();
+    appendMessage(translatedBot, 'bot');
+    history.push(['bot', translatedBot]);
+  } catch {
+    removeTypingIndicator();
+    appendMessage("Oops, something went wrong.", 'bot');
+  }
 
-    userInput.addEventListener("keypress", function (e) {
-      if (e.key === "Enter") sendMessage();
-    });
-  </script>
+  updateHistoryList();
+  sendBtn.disabled = false;
+}
+
+function newChat() {
+  history.length = 0;
+  chatBox.innerHTML = '';
+  historyList.innerHTML = '';
+  localStorage.removeItem('chatHistory');
+}
+
+function updateHistoryList() {
+  historyList.innerHTML = '';
+  for (let i = 0; i < history.length; i += 2) {
+    const userMsg = history[i]?.[1] || '';
+    const botMsg = history[i + 1]?.[1] || '';
+    const item = document.createElement('div');
+    item.className = 'history-entry';
+    item.innerHTML = `
+      <div><strong>You:</strong> ${userMsg.slice(0, 40)}</div>
+      <div><strong>Bot:</strong> ${botMsg.slice(0, 40)}</div>`;
+    historyList.appendChild(item);
+  }
+}
+
+function clearHistory() {
+  history.length = 0;
+  chatBox.innerHTML = '';
+  historyList.innerHTML = '';
+  localStorage.removeItem('chatHistory');
+}
+
+function changeLanguage() {
+  const dropdown = document.getElementById("language");
+  selectedLang = dropdown.value;
+}
+
+function toggleSidebar() {
+  sidebar.classList.toggle("history-hidden");
+}
+
+function toggleDarkMode() {
+  document.body.classList.toggle("dark-mode");
+}
+
+function startListening() {
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = selectedLang || "en-US";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.start();
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    userInput.value = text;
+    sendMessage();
+  };
+  recognition.onerror = (event) => {
+    console.error("Speech recognition error:", event.error);
+  };
+}
+
+function getVoiceForLang(lang) {
+  const voices = speechSynthesis.getVoices();
+  if (lang === "te-IN") {
+    return voices.find(v => v.lang === "te-IN" && v.name.includes("Google")) ||
+           voices.find(v => v.lang === "te-IN");
+  }
+  return voices.find(v => v.lang === lang) || voices[0];
+}
+
+function speakText(text, lang="en-US") {
+  if (speechSynthesis.speaking) speechSynthesis.cancel();
+  currentUtterance = new SpeechSynthesisUtterance(text);
+  currentUtterance.lang = lang;
+  const voice = getVoiceForLang(lang);
+  if (voice) currentUtterance.voice = voice;
+  speechSynthesis.speak(currentUtterance);
+}
+
+pauseBtn.addEventListener("click", () => {
+  if (!isPaused) {
+    speechSynthesis.pause();
+    pauseBtn.textContent = "▶";
+    isPaused = true;
+  } else {
+    speechSynthesis.resume();
+    pauseBtn.textContent = "⏸";
+    isPaused = false;
+  }
+});
+
+stopBtn.addEventListener("click", () => {
+  speechSynthesis.cancel();
+  pauseBtn.textContent = "⏸"; 
+  isPaused = false;
+});
+
+window.onload = () => {
+  const saved = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+  saved.forEach(([role, text]) => appendMessage(text, role));
+  history.push(...saved);
+  updateHistoryList();
+};
+
+window.onbeforeunload = () => {
+  localStorage.setItem('chatHistory', JSON.stringify(history));
+};
+
+userInput.addEventListener("keypress", function (e) {
+  if (e.key === "Enter") sendMessage();
+});
+
+speechSynthesis.onvoiceschanged = () => {};
+</script>
 </body>
 </html>
